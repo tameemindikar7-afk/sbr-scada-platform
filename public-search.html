@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SBR HMI | Public TAMEEM ESG Directory</title>
+    
+    <!-- Global ISA-101 Dark Mode Theme -->
+    <link rel="stylesheet" href="scada-theme.css">
+    
+    <!-- Leaflet.js CSS & JS for Interactive Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Chart.js CDN for Sparklines -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        /* --- Layout Grid --- */
+        .esg-dashboard-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            flex-grow: 1;
+            overflow-y: auto;
+            padding-bottom: 20px;
+        }
+
+        /* --- Map Section & No-Key Dark Mode Filter --- */
+        .map-wrapper {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-dark);
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        #esg-map {
+            height: 350px;
+            width: 100%;
+            background-color: #1a1a1a;
+            border: 1px solid var(--border-dark);
+        }
+
+        .leaflet-layer, 
+        .leaflet-control-zoom-in, 
+        .leaflet-control-zoom-out, 
+        .leaflet-control-attribution { 
+            filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%); 
+        }
+
+        /* Custom Leaflet Pulsing Markers */
+        .pulse-icon {
+            border-radius: 50%;
+            width: 15px;
+            height: 15px;
+        }
+        .pulse-green {
+            background: var(--status-green);
+            box-shadow: 0 0 0 rgba(56, 142, 60, 0.5);
+            animation: pulse-g 2s infinite;
+        }
+        .pulse-yellow {
+            background: var(--alarm-yellow);
+            box-shadow: 0 0 0 rgba(251, 192, 45, 0.5);
+            animation: pulse-y 2s infinite;
+        }
+        @keyframes pulse-g {
+            0% { box-shadow: 0 0 0 0 rgba(56, 142, 60, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(56, 142, 60, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(56, 142, 60, 0); }
+        }
+        @keyframes pulse-y {
+            0% { box-shadow: 0 0 0 0 rgba(251, 192, 45, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(251, 192, 45, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(251, 192, 45, 0); }
+        }
+
+        /* --- Search Bar --- */
+        .search-panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-dark);
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .search-input {
+            width: 100%;
+            max-width: 600px;
+            padding: 12px;
+            font-size: 1.1rem;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-dark);
+            color: var(--text-main);
+            outline: none;
+        }
+        .search-input:focus { border-color: var(--border-light); }
+
+        /* --- Facility Cards Grid --- */
+        .facility-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 20px;
+        }
+
+        .facility-card {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-dark);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+        }
+
+        /* Hover effect for routing */
+        .facility-card:hover {
+            border-color: var(--text-main);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.4);
+            background-color: #333333;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px solid var(--border-dark);
+            padding-bottom: 10px;
+        }
+
+        .badges {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 5px;
+        }
+
+        .badge-status {
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: white;
+            text-transform: uppercase;
+        }
+        .bg-green { background-color: var(--status-green); }
+        .bg-yellow { background-color: var(--alarm-yellow); color: #000; }
+        .badge-phase {
+            background-color: var(--border-dark);
+            color: var(--text-main);
+            padding: 3px 6px;
+            font-size: 0.7rem;
+            font-family: monospace;
+        }
+
+        /* Metrics & Impacts */
+        .metrics-mini-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        .mini-card {
+            background-color: var(--bg-base);
+            padding: 8px;
+            border: 1px solid var(--border-dark);
+            text-align: center;
+        }
+        .mini-lbl { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; }
+        .mini-val { font-size: 1rem; font-family: monospace; font-weight: bold; color: #fff; margin-top: 4px; }
+
+        /* Sparkline Container */
+        .sparkline-wrapper {
+            height: 90px;
+            width: 100%;
+            position: relative;
+            background-color: var(--bg-base);
+            border: 1px solid var(--border-dark);
+            padding: 5px;
+        }
+        .sparkline-title {
+            position: absolute;
+            top: 5px;
+            left: 10px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: bold;
+            z-index: 10;
+        }
+
+        .notice-banner {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-left: 3px solid var(--border-light);
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .btn-download {
+            background-color: var(--btn-base);
+            color: var(--text-main);
+            border: 1px solid var(--border-light);
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            transition: 0.2s;
+            margin-top: auto;
+        }
+        .btn-download:hover { background-color: var(--text-main); color: var(--bg-base); }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header class="hmi-header">
+        <div class="header-info">
+            <h1>Public ESG Directory</h1>
+            <div class="header-meta">
+                <span>Multi-Tenant Transparency & Compliance Portal</span>
+            </div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+            <button onclick="alert('Educational Modal placeholder.')" style="border-color: var(--status-green); color: var(--status-green);">? How SBR Works</button>
+            <button onclick="window.location.href='index.html'">Return to Hub</button>
+        </div>
+    </header>
+
+    <div class="esg-dashboard-layout">
+        
+        <!-- Interactive Map -->
+        <div class="map-wrapper">
+            <div style="font-weight: bold; margin-bottom: 10px; text-transform: uppercase; color: var(--text-main);">Live Facility Network Status</div>
+            <div id="esg-map"></div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="search-panel">
+            <input type="text" id="facility-search" class="search-input" placeholder="Filter by Plant ID, Name, or City (e.g., Bengaluru)..." onkeyup="filterFacilities()">
+        </div>
+
+        <!-- Dynamic Facilities Grid -->
+        <div class="facility-grid" id="facility-grid-container">
+            <!-- Rendered via JavaScript -->
+        </div>
+
+    </div>
+
+    <script>
+        // --- 1. Dynamic Facility Data Array (10 Facilities) ---
+        const facilities = [
+            { id: "SBR-BLR-001", name: "Bengaluru Pilot Plant", loc: "Bengaluru, KA", cap: "30L / Batch", lat: 12.9716, lng: 77.5946, status: "COMPLIANT", phase: "REACT", ph: "7.20", turb: "2.1", vol: "1.2M", bod: "96.5", notice: "Routine sensor calibration.", alertType: null, spark: [2.1, 2.3, 1.9, 2.5, 2.0, 2.2, 2.1], sparkLabel: "7-Day Turbidity (NTU)" },
+            { id: "SBR-BLR-002", name: "Peenya Industrial SBR", loc: "Bengaluru, KA", cap: "100L / Batch", lat: 13.0285, lng: 77.5197, status: "ALERT", phase: "FILL", ph: "8.82", turb: "4.8", vol: "8.1M", bod: "91.0", notice: "pH upper limit approached. Engineers deployed.", alertType: "pH", spark: [7.5, 7.8, 8.1, 8.4, 8.6, 8.7, 8.9], sparkLabel: "7-Day pH Trend" },
+            { id: "SBR-BLR-003", name: "Electronic City Eco-Plant", loc: "Bengaluru, KA", cap: "50L / Batch", lat: 12.8399, lng: 77.6770, status: "COMPLIANT", phase: "SETTLE", ph: "7.15", turb: "1.8", vol: "2.4M", bod: "97.2", notice: "Normal operations.", alertType: null, spark: [1.5, 1.8, 2.2, 1.9, 1.7, 1.8, 1.8], sparkLabel: "7-Day Turbidity (NTU)" },
+            { id: "SBR-PUN-042", name: "Pune Municipal Satellite", loc: "Pune, MH", cap: "50L / Batch", lat: 18.5204, lng: 73.8567, status: "COMPLIANT", phase: "DECANT", ph: "7.45", turb: "3.4", vol: "3.4M", bod: "94.2", notice: "Upgraded aeration blowers installed.", alertType: null, spark: [3.5, 3.2, 3.8, 3.1, 3.4, 3.5, 3.4], sparkLabel: "7-Day Turbidity (NTU)" },
+            { id: "SBR-DEL-019", name: "New Delhi Industrial Zone", loc: "New Delhi, DL", cap: "150L / Batch", lat: 28.6139, lng: 77.2090, status: "ALERT", phase: "IDLE", ph: "7.40", turb: "12.5", vol: "12.5M", bod: "88.5", notice: "High influent turbidity detected.", alertType: "TURBIDITY", spark: [4.0, 5.2, 6.5, 8.4, 9.8, 11.2, 12.5], sparkLabel: "7-Day Turbidity (NTU)" },
+            { id: "SBR-MUM-011", name: "Mumbai Coastal Recycler", loc: "Mumbai, MH", cap: "200L / Batch", lat: 19.0760, lng: 72.8777, status: "COMPLIANT", phase: "REACT", ph: "7.30", turb: "2.8", vol: "18.2M", bod: "95.5", notice: "Normal operations.", alertType: null, spark: [2.5, 2.7, 2.6, 2.9, 2.8, 2.7, 2.8], sparkLabel: "7-Day Turbidity (NTU)" },
+            { id: "SBR-CHN-005", name: "Chennai South Tech Park", loc: "Chennai, TN", cap: "80L / Batch", lat: 13.0827, lng: 80.2707, status: "COMPLIANT", phase: "FILL", ph: "7.10", turb: "1.5", vol: "5.5M", bod: "98.1", notice: "Normal operations.", alertType: null, spark: [1.2, 1.4, 1.5, 1.3, 1.6, 1.4, 1.5], sparkLabel: "7-Day Turbidity (NTU)" },
+            { id: "SBR-HYD-008", name: "Hyderabad Pharma-Zone", loc: "Hyderabad, TS", cap: "60L / Batch", lat: 17.3850, lng: 78.4867, status: "COMPLIANT", phase: "REACT", ph: "7.25", turb: "2.2", vol: "4.1M", bod: "96.8", notice: "Optimized DO profiling active.", alertType: null, spark: [2.0, 2.1, 2.3, 2.1, 2.2, 2.1, 2.2], sparkLabel: "7-Day Turbidity (NTU)" },
+            { id: "SBR-KOL-022", name: "Kolkata East Treatment", loc: "Kolkata, WB", cap: "120L / Batch", lat: 22.5726, lng: 88.3639, status: "ALERT", phase: "SETTLE", ph: "6.90", turb: "4.5", vol: "9.2M", bod: "82.0", notice: "BOD removal efficiency dropping. Investigating.", alertType: "BOD", spark: [92, 89, 85, 82, 80, 81, 82], sparkLabel: "7-Day BOD Removal (%)" },
+            { id: "SBR-AMD-014", name: "Ahmedabad West Textile", loc: "Ahmedabad, GJ", cap: "90L / Batch", lat: 23.0225, lng: 72.5714, status: "COMPLIANT", phase: "DECANT", ph: "7.35", turb: "3.1", vol: "6.8M", bod: "93.5", notice: "Normal operations.", alertType: null, spark: [3.2, 3.0, 3.4, 3.1, 3.0, 3.2, 3.1], sparkLabel: "7-Day Turbidity (NTU)" }
+        ];
+
+        // --- 2. Leaflet Map Initialization ---
+        const map = L.map('esg-map').setView([21.0, 78.0], 4.5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors',
+            maxZoom: 18
+        }).addTo(map);
+
+        const greenPulse = L.divIcon({ className: 'pulse-icon pulse-green', iconSize: [15, 15] });
+        const yellowPulse = L.divIcon({ className: 'pulse-icon pulse-yellow', iconSize: [15, 15] });
+
+        // --- 3. Dynamic UI Generation & Routing ---
+        const gridContainer = document.getElementById('facility-grid-container');
+
+        // Route to dynamic URL
+        window.routeToFacility = function(id) {
+            window.location.href = 'public-facility.html?id=' + id;
+        };
+
+        // Prevent download button from triggering the card route
+        window.downloadReport = function(event, id) {
+            event.stopPropagation();
+            alert(`Generating PDF Report for ${id}... (Mock)`);
+        };
+
+        facilities.forEach(fac => {
+            // 1. Add Map Marker
+            const icon = fac.status === 'COMPLIANT' ? greenPulse : yellowPulse;
+            L.marker([fac.lat, fac.lng], {icon: icon}).addTo(map)
+                .bindPopup(`<b style="color:#000;">${fac.id}</b><br><span style="color:#000;">${fac.name}</span><br><span style="color:#000;">Status: ${fac.status}</span>`);
+
+            // 2. Build HTML Card
+            const statusClass = fac.status === 'COMPLIANT' ? 'bg-green' : 'bg-yellow';
+            const alertText = fac.status === 'COMPLIANT' ? 'COMPLIANT' : `ALERT (${fac.alertType})`;
+            const borderNotice = fac.status === 'COMPLIANT' ? 'var(--border-light)' : 'var(--alarm-yellow)';
+
+            const cardHTML = `
+                <div class="facility-card" onclick="routeToFacility('${fac.id}')">
+                    <div class="card-header">
+                        <div>
+                            <div style="font-family: monospace; font-size: 1.2rem; font-weight: bold; color: #fff;">${fac.id}</div>
+                            <div style="font-size: 0.9rem; color: var(--text-muted);">${fac.name} (${fac.cap})</div>
+                            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top:3px;">${fac.loc}</div>
+                        </div>
+                        <div class="badges">
+                            <div class="badge-status ${statusClass}">${alertText}</div>
+                            <div class="badge-phase">PHASE: ${fac.phase}</div>
+                        </div>
+                    </div>
+
+                    <div class="metrics-mini-grid">
+                        <div class="mini-card"><div class="mini-lbl">pH</div><div class="mini-val" ${fac.alertType === 'pH' ? 'style="color:var(--alarm-yellow);"' : ''}>${fac.ph}</div></div>
+                        <div class="mini-card"><div class="mini-lbl">Turbidity</div><div class="mini-val" ${fac.alertType === 'TURBIDITY' ? 'style="color:var(--alarm-yellow);"' : ''}>${fac.turb} <span style="font-size:0.6rem">NTU</span></div></div>
+                        <div class="mini-card"><div class="mini-lbl">Volume</div><div class="mini-val">${fac.vol} <span style="font-size:0.6rem">L</span></div></div>
+                        <div class="mini-card"><div class="mini-lbl">BOD Rem</div><div class="mini-val" ${fac.alertType === 'BOD' ? 'style="color:var(--alarm-yellow);"' : ''}>${fac.bod}%</div></div>
+                    </div>
+
+                    <div class="sparkline-wrapper">
+                        <div class="sparkline-title">${fac.sparkLabel}</div>
+                        <canvas id="chart-${fac.id}"></canvas>
+                    </div>
+
+                    <div class="notice-banner" style="border-left-color: ${borderNotice};"><strong>Notice:</strong> ${fac.notice}</div>
+                    <button class="btn-download" onclick="downloadReport(event, '${fac.id}')">Download Monthly Report</button>
+                </div>
+            `;
+            gridContainer.innerHTML += cardHTML;
+        });
+
+        // --- 4. Render Sparklines ---
+        const sparklineOptions = {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+            scales: { x: { display: false }, y: { display: false } },
+            layout: { padding: { top: 25, bottom: 5, left: -5, right: 0 } },
+            elements: { point: { radius: 0 } },
+            animation: false
+        };
+
+        facilities.forEach(fac => {
+            const ctx = document.getElementById(`chart-${fac.id}`).getContext('2d');
+            const color = fac.status === 'COMPLIANT' ? '#388e3c' : '#fbc02d';
+            
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['Day 1','Day 2','Day 3','Day 4','Day 5','Day 6','Day 7'],
+                    datasets: [{ data: fac.spark, borderColor: color, borderWidth: 2, tension: 0.3 }]
+                },
+                options: sparklineOptions
+            });
+        });
+
+        // --- 5. Search Filter ---
+        function filterFacilities() {
+            const query = document.getElementById('facility-search').value.toLowerCase();
+            const cards = document.getElementsByClassName('facility-card');
+
+            for (let i = 0; i < cards.length; i++) {
+                const text = cards[i].innerText.toLowerCase();
+                cards[i].style.display = text.includes(query) ? "flex" : "none";
+            }
+        }
+    </script>
+</body>
+</html>

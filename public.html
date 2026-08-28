@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SBR HMI | Public ESG Dashboard</title>
+    <style>
+        /* ISA-101 Compliant SCADA Theme */
+        :root {
+            --bg-base: #cfcfcf;
+            --panel-bg: #e6e6e6;
+            --border-dark: #8c8c8c;
+            --border-light: #ffffff;
+            --text-main: #2b2b2b;
+            --text-label: #595959;
+            --alarm-red: #d32f2f;
+            --warning-yellow: #fbc02d;
+            --button-base: #bfbfbf;
+            --button-hover: #a6a6a6;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            height: 100vh;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header Layout */
+        .hmi-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--panel-bg);
+            border: 2px solid var(--border-dark);
+            padding: 10px 20px;
+            margin-bottom: 20px;
+            box-shadow: inset 1px 1px 0px var(--border-light);
+        }
+
+        .hmi-header h1 {
+            margin: 0;
+            font-size: 1.4rem;
+            text-transform: uppercase;
+        }
+
+        .logout-btn {
+            background-color: var(--button-base);
+            color: var(--text-main);
+            font-size: 1rem;
+            font-weight: bold;
+            padding: 10px 20px;
+            border: 2px solid var(--border-dark);
+            border-radius: 4px;
+            cursor: pointer;
+            text-transform: uppercase;
+        }
+
+        .logout-btn:hover {
+            background-color: var(--button-hover);
+        }
+
+        /* Notice Banner */
+        .esg-banner {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-dark);
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: bold;
+            color: var(--text-label);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Grid Layout for Metrics */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background-color: var(--panel-bg);
+            border: 2px solid var(--border-dark);
+            box-shadow: inset 1px 1px 0px var(--border-light);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative;
+        }
+
+        .metric-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--text-label);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            width: 100%;
+            border-bottom: 1px solid var(--border-dark);
+            padding-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+
+        .metric-unit {
+            font-size: 1rem;
+            color: var(--text-label);
+        }
+
+        .cpcb-limit {
+            font-size: 0.85rem;
+            color: var(--text-label);
+            margin-top: 10px;
+        }
+
+        /* Status Indicator (ISA-101 Normal = Gray) */
+        .status-indicator {
+            margin-top: 15px;
+            padding: 5px 15px;
+            background-color: var(--border-dark);
+            color: white;
+            font-weight: bold;
+            font-size: 0.9rem;
+            border-radius: 3px;
+            text-transform: uppercase;
+            width: 100%;
+        }
+
+        /* Plant Status Panel */
+        .status-panel {
+            background-color: var(--panel-bg);
+            border: 2px solid var(--border-dark);
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-panel div {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--text-label);
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="hmi-header">
+        <div>
+            <h1>Public ESG Dashboard</h1>
+            <span style="color: var(--text-label); font-size: 0.9rem;">Facility: 30L SBR Pilot Plant | Read-Only Access</span>
+        </div>
+        <button class="logout-btn" onclick="window.location.href='index.html'">Return to Hub</button>
+    </div>
+
+    <div class="esg-banner">
+        Live Environmental Compliance Telemetry (CPCB Monitored)
+    </div>
+
+    <div class="dashboard-grid">
+        
+        <!-- pH Metric -->
+        <div class="metric-card">
+            <div class="metric-title">pH Level</div>
+            <div>
+                <span class="metric-value" id="val-ph">7.15</span>
+                <span class="metric-unit">pH</span>
+            </div>
+            <div class="cpcb-limit">CPCB Limit: 5.5 - 9.0</div>
+            <div class="status-indicator" id="status-ph">NORMAL</div>
+        </div>
+
+        <!-- Temperature Metric -->
+        <div class="metric-card">
+            <div class="metric-title">Temperature</div>
+            <div>
+                <span class="metric-value" id="val-temp">24.2</span>
+                <span class="metric-unit">°C</span>
+            </div>
+            <div class="cpcb-limit">CPCB Limit: < 35 °C</div>
+            <div class="status-indicator" id="status-temp">NORMAL</div>
+        </div>
+
+        <!-- TDS Metric -->
+        <div class="metric-card">
+            <div class="metric-title">TDS</div>
+            <div>
+                <span class="metric-value" id="val-tds">1840</span>
+                <span class="metric-unit">mg/L</span>
+            </div>
+            <div class="cpcb-limit">CPCB Limit: < 2100 mg/L</div>
+            <div class="status-indicator" id="status-tds">NORMAL</div>
+        </div>
+
+        <!-- Turbidity Metric -->
+        <div class="metric-card">
+            <div class="metric-title">Turbidity</div>
+            <div>
+                <span class="metric-value" id="val-turb">12.1</span>
+                <span class="metric-unit">NTU</span>
+            </div>
+            <div class="cpcb-limit">CPCB Limit: < 30 NTU</div>
+            <div class="status-indicator" id="status-turb">NORMAL</div>
+        </div>
+
+    </div>
+
+    <div class="status-panel">
+        <div>Current SBR Phase: <span style="color: var(--text-main);">REACT (AERATION)</span></div>
+        <div>Last Updated: <span id="timestamp" style="font-family: monospace; color: var(--text-main);">Just Now</span></div>
+    </div>
+
+    <script>
+        // --- Simulated Live Telemetry Feed for Public View ---
+        
+        // This function simulates minor fluctuations in the data to show the client
+        // how the live dashboard will look. Once your ESP32 is hooked up, you will 
+        // replace this with real WebSocket incoming data.
+        
+        function updateTelemetry() {
+            // Generate slight random variations
+            let ph = (7.1 + Math.random() * 0.2).toFixed(2);
+            let temp = (24.0 + Math.random() * 0.8).toFixed(1);
+            let tds = Math.floor(1830 + Math.random() * 30);
+            let turb = (12.0 + Math.random() * 1.5).toFixed(1);
+
+            // Update HTML elements
+            document.getElementById('val-ph').innerText = ph;
+            document.getElementById('val-temp').innerText = temp;
+            document.getElementById('val-tds').innerText = tds;
+            document.getElementById('val-turb').innerText = turb;
+
+            // Update timestamp
+            const now = new Date();
+            document.getElementById('timestamp').innerText = now.toLocaleTimeString();
+
+            // ISA-101 Alarm Logic Check
+            // Note: In a true normal state, colors remain neutral (gray).
+            // We only inject color if a limit is breached.
+            checkAlarmState('ph', ph, 5.5, 9.0);
+            checkAlarmState('temp', temp, 0, 35.0);
+            checkAlarmState('tds', tds, 0, 2100);
+            checkAlarmState('turb', turb, 0, 30.0);
+        }
+
+        function checkAlarmState(id, value, min, max) {
+            const statusBox = document.getElementById('status-' + id);
+            
+            if (value < min || value > max) {
+                // Limit Breached - Inject High Contrast Color (Red)
+                statusBox.style.backgroundColor = 'var(--alarm-red)';
+                statusBox.innerText = 'LIMIT BREACH';
+            } else if (value > max * 0.9) {
+                // Approaching Limit - Inject Warning Color (Yellow)
+                statusBox.style.backgroundColor = 'var(--warning-yellow)';
+                statusBox.style.color = '#000'; // dark text on yellow for contrast
+                statusBox.innerText = 'WARNING';
+            } else {
+                // Normal Operation - Neutral Grayscale
+                statusBox.style.backgroundColor = 'var(--border-dark)';
+                statusBox.style.color = 'white';
+                statusBox.innerText = 'NORMAL';
+            }
+        }
+
+        // Run the simulation every 3 seconds
+        setInterval(updateTelemetry, 3000);
+    </script>
+</body>
+</html>

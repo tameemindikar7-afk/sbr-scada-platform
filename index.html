@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SBR HMI | Access Portal</title>
+    <style>
+        /* ISA-101 Industrial Dark Mode Theme */
+        :root {
+            --bg-base: #1e1e1e;
+            --panel-bg: #2d2d2d;
+            --border-dark: #444444;
+            --border-light: #555555;
+            --text-main: #e0e0e0;
+            --text-muted: #888888;
+            --btn-base: #404040;
+            --btn-hover: #505050;
+            --alarm-red: #d32f2f;
+            --input-bg: #333333;
+            --tab-inactive: #222222;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-container {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-dark);
+            border-radius: 4px;
+            width: 450px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: var(--border-dark);
+            color: #ffffff;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.4rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .header p {
+            margin: 5px 0 0 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .tabs {
+            display: flex;
+            background-color: var(--tab-inactive);
+            border-bottom: 1px solid var(--border-dark);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px 0;
+            text-align: center;
+            cursor: pointer;
+            font-weight: bold;
+            color: var(--text-muted);
+            border-right: 1px solid var(--border-dark);
+            transition: background-color 0.2s, color 0.2s;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+        }
+
+        .tab:last-child {
+            border-right: none;
+        }
+
+        .tab.active {
+            background-color: var(--panel-bg);
+            color: #ffffff;
+            border-bottom: 2px solid var(--panel-bg);
+            margin-bottom: -1px;
+        }
+
+        .tab:hover:not(.active) {
+            background-color: #2a2a2a;
+            color: var(--text-main);
+        }
+
+        .form-container {
+            padding: 30px;
+            display: none;
+        }
+
+        .form-container.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            color: var(--text-main);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-dark);
+            background-color: var(--input-bg);
+            color: var(--text-main);
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--border-light);
+            background-color: #3a3a3a;
+        }
+
+        button.submit-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--btn-base);
+            color: var(--text-main);
+            border: 1px solid var(--border-light);
+            font-weight: bold;
+            font-size: 1rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            margin-top: 10px;
+            transition: background-color 0.2s;
+        }
+
+        button.submit-btn:hover {
+            background-color: var(--btn-hover);
+            color: #ffffff;
+        }
+
+        button.submit-btn:disabled {
+            background-color: var(--border-dark);
+            color: var(--text-muted);
+            cursor: wait;
+        }
+
+        .notice {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        /* ISA-101 Error Message Box (Dark Mode Adapted) */
+        #error-msg {
+            display: none;
+            background-color: rgba(211, 47, 47, 0.15);
+            color: #ff9999;
+            border: 1px solid var(--alarm-red);
+            padding: 10px;
+            margin: 20px 30px 0 30px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-align: center;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="header">
+            <h1>SBR Wastewater Plant</h1>
+            <p>System Human-Machine Interface</p>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('public')">Public</div>
+            <div class="tab" onclick="switchTab('operator')">Operator</div>
+            <div class="tab" onclick="switchTab('auditor')">Auditor</div>
+        </div>
+
+        <!-- Dynamic Error Display -->
+        <div id="error-msg"></div>
+
+        <!-- Public Access Panel -->
+        <div id="public-panel" class="form-container active">
+            <p style="text-align: center; margin-bottom: 25px; color: var(--text-main);">
+                Welcome to the Public ESG Dashboard. <br>
+                View live compliance metrics and telemetry.
+            </p>
+            <button class="submit-btn" onclick="login('public')">Enter Public View</button>
+            <p class="notice">Read-only access. No credentials required.</p>
+        </div>
+
+        <!-- Operator Access Panel -->
+        <div id="operator-panel" class="form-container">
+            <div class="form-group">
+                <label for="op-user">Operator Email</label>
+                <input type="email" id="op-user" placeholder="Enter Account Email">
+            </div>
+            <div class="form-group">
+                <label for="op-pass">Password</label>
+                <input type="password" id="op-pass" placeholder="Enter Password">
+            </div>
+            <button class="submit-btn" id="btn-operator" onclick="login('operator')">Log In to HMI</button>
+            <p class="notice">Authorized plant personnel only. Activity is logged.</p>
+        </div>
+
+        <!-- Auditor Access Panel -->
+        <div id="auditor-panel" class="form-container">
+            <div class="form-group">
+                <label for="aud-user">Auditor Email</label>
+                <input type="email" id="aud-user" placeholder="Enter Account Email">
+            </div>
+            <div class="form-group">
+                <label for="aud-pass">Password</label>
+                <input type="password" id="aud-pass" placeholder="Enter Password">
+            </div>
+            <div class="form-group">
+                <label for="aud-token">Secure Token (Optional)</label>
+                <input type="text" id="aud-token" placeholder="Enter 2FA Token">
+            </div>
+            <button class="submit-btn" id="btn-auditor" onclick="login('auditor')">Access Logs</button>
+            <p class="notice">Data export and predictive maintenance portal.</p>
+        </div>
+    </div>
+
+    <!-- Firebase v8 CDN Libraries -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        // 1. Initialize Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyA_cflBLHqk7L46KZ8mAy7RKYm995DU3vc",
+            authDomain: "sbr-scada-platform.firebaseapp.com",
+            databaseURL: "https://sbr-scada-platform-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "sbr-scada-platform",
+            storageBucket: "sbr-scada-platform.firebasestorage.app",
+            messagingSenderId: "1010717791850",
+            appId: "1:1010717791850:web:9e0d872b95df14b8ad5c13",
+            measurementId: "G-EYS5P94JFR"
+        };
+
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        // 2. UI Tab Switching Logic
+        function switchTab(role) {
+            hideError();
+            const tabs = document.querySelectorAll('.tab');
+            const panels = document.querySelectorAll('.form-container');
+            
+            tabs.forEach(tab => tab.classList.remove('active'));
+            panels.forEach(panel => panel.classList.remove('active'));
+
+            if (role === 'public') {
+                tabs[0].classList.add('active');
+                document.getElementById('public-panel').classList.add('active');
+            } else if (role === 'operator') {
+                tabs[1].classList.add('active');
+                document.getElementById('operator-panel').classList.add('active');
+            } else if (role === 'auditor') {
+                tabs[2].classList.add('active');
+                document.getElementById('auditor-panel').classList.add('active');
+            }
+        }
+
+        // 3. Error Message Handlers
+        function showError(message) {
+            const errorBox = document.getElementById('error-msg');
+            errorBox.innerText = message;
+            errorBox.style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('error-msg').style.display = 'none';
+        }
+
+        // 4. Authentication and Routing Logic
+        function login(role) {
+            hideError();
+
+            // Public routing bypasses authentication entirely
+            if (role === 'public') {
+                window.location.href = 'public-search.html';
+                return;
+            }
+
+            // Gather inputs and UI elements based on role
+            let email, password, btn;
+            if (role === 'operator') {
+                email = document.getElementById('op-user').value;
+                password = document.getElementById('op-pass').value;
+                btn = document.getElementById('btn-operator');
+            } else if (role === 'auditor') {
+                email = document.getElementById('aud-user').value;
+                password = document.getElementById('aud-pass').value;
+                btn = document.getElementById('btn-auditor');
+            }
+
+            if (!email || !password) {
+                showError("Please enter both email and password.");
+                return;
+            }
+
+            // Lock UI during authentication
+            btn.disabled = true;
+            btn.innerText = "AUTHENTICATING...";
+
+            // Sign in with Firebase Auth
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    const uid = userCredential.user.uid;
+                    
+                    // Verify the user's role in the Realtime Database
+                    return db.ref('users/' + uid).once('value');
+                })
+                .then((snapshot) => {
+                    if (snapshot.exists()) {
+                        const userData = snapshot.val();
+                        
+                        // Strict role validation
+                        if (userData.role === role) {
+                            window.location.href = role + '.html';
+                        } else {
+                            auth.signOut();
+                            showError(`Access Denied: You do not have ${role} privileges.`);
+                            btn.disabled = false;
+                            btn.innerText = role === 'operator' ? "Log In to HMI" : "Access Logs";
+                        }
+                    } else {
+                        auth.signOut();
+                        showError("Account recognized, but no system role assigned. Contact Administrator.");
+                        btn.disabled = false;
+                        btn.innerText = role === 'operator' ? "Log In to HMI" : "Access Logs";
+                    }
+                })
+                .catch((error) => {
+                    // Firebase Auth Errors (e.g., wrong password, user not found)
+                    showError("Authentication Failed: Invalid Credentials.");
+                    console.error(error.code, error.message);
+                    btn.disabled = false;
+                    btn.innerText = role === 'operator' ? "Log In to HMI" : "Access Logs";
+                });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SBR HMI | Auditor Portal</title>
+    <style>
+        /* ISA-101 Compliant SCADA Theme */
+        :root {
+            --bg-base: #cfcfcf;
+            --panel-bg: #e6e6e6;
+            --border-dark: #8c8c8c;
+            --border-light: #ffffff;
+            --text-main: #2b2b2b;
+            --text-label: #595959;
+            --button-base: #bfbfbf;
+            --button-hover: #a6a6a6;
+            --table-header: #b3b3b3;
+            --bar-bg: #d9d9d9;
+            --bar-fill: #595959;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            height: 100vh;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        /* --- Header Layout --- */
+        .hmi-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--panel-bg);
+            border: 2px solid var(--border-dark);
+            padding: 15px 20px;
+            margin-bottom: 15px;
+            box-shadow: inset 1px 1px 0px var(--border-light);
+            flex-shrink: 0;
+        }
+
+        .header-info h1 {
+            margin: 0 0 5px 0;
+            font-size: 1.4rem;
+            text-transform: uppercase;
+        }
+
+        .header-meta {
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: var(--text-label);
+            display: flex;
+            gap: 20px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            font-family: inherit;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: bold;
+            border: 2px solid var(--border-dark);
+            box-shadow: inset 1px 1px 0px var(--border-light);
+            padding: 10px 20px;
+            font-size: 1rem;
+        }
+
+        .btn-nav {
+            background-color: var(--button-base);
+            color: var(--text-main);
+        }
+
+        .btn-nav:hover {
+            background-color: var(--button-hover);
+        }
+
+        .btn-export {
+            background-color: var(--text-label);
+            color: white;
+            border-color: #333;
+        }
+
+        .btn-export:hover {
+            background-color: var(--text-main);
+        }
+
+        /* --- Facility Selection Panel --- */
+        .facility-select-panel {
+            background-color: var(--panel-bg);
+            border: 2px solid var(--border-dark);
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            box-shadow: inset 1px 1px 0px var(--border-light);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-shrink: 0;
+        }
+
+        .facility-select-panel label {
+            font-weight: bold;
+            font-size: 1rem;
+            text-transform: uppercase;
+            color: var(--text-main);
+        }
+
+        .facility-select-panel select {
+            padding: 8px 12px;
+            font-size: 1rem;
+            border: 1px solid var(--border-dark);
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            font-family: monospace;
+            font-weight: bold;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .btn-fetch {
+            background-color: var(--text-label);
+            color: white;
+            border-color: #333;
+            padding: 8px 15px;
+            font-size: 0.9rem;
+        }
+
+        .btn-fetch:hover {
+            background-color: var(--text-main);
+        }
+
+        .btn-fetch:disabled {
+            background-color: var(--button-base);
+            color: var(--text-label);
+            cursor: wait;
+            box-shadow: none;
+        }
+
+        /* --- Section Layout --- */
+        .section-panel {
+            background-color: var(--panel-bg);
+            border: 2px solid var(--border-dark);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: inset 1px 1px 0px var(--border-light);
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--text-main);
+            text-transform: uppercase;
+            border-bottom: 2px solid var(--border-dark);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* --- Data Tables --- */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        .data-table th {
+            background-color: var(--table-header);
+            text-align: left;
+            padding: 10px;
+            border: 1px solid var(--border-dark);
+            color: var(--text-main);
+        }
+
+        .data-table td {
+            padding: 10px;
+            border: 1px solid var(--border-dark);
+            background-color: var(--bg-base);
+        }
+
+        .data-table tr:nth-child(even) td {
+            background-color: #d1d1d1;
+        }
+
+        .mono-text {
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        /* --- Predictive Maintenance --- */
+        .maintenance-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .maint-card {
+            background-color: var(--bg-base);
+            border: 1px solid var(--border-dark);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .maint-header {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 20px;
+            background-color: var(--bar-bg);
+            border: 1px solid var(--border-dark);
+            margin-bottom: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--bar-fill);
+            transition: width 0.5s ease-in-out;
+        }
+
+        .maint-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: var(--text-label);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Global Header -->
+    <header class="hmi-header">
+        <div class="header-info">
+            <h1>Auditor & Reporting Portal</h1>
+            <div class="header-meta">
+                <span id="header-facility-id">Facility ID: SBR-BLR-001</span>
+                <span>Role: ENVIRONMENTAL AUDITOR</span>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-export" onclick="exportCSV()">Export 30-Day CSV</button>
+            <button class="btn-nav" onclick="window.location.href='index.html'">Return to Hub</button>
+        </div>
+    </header>
+
+    <!-- Target Facility Selection -->
+    <section class="facility-select-panel">
+        <label for="plant-selector">Target Facility Selection:</label>
+        <select id="plant-selector">
+            <option value="SBR-BLR-001">SBR-BLR-001 (Bengaluru - 30L Pilot)</option>
+            <option value="SBR-PUN-042">SBR-PUN-042 (Pune - 50L Pilot)</option>
+            <option value="SBR-DEL-019">SBR-DEL-019 (New Delhi - 100L Prod)</option>
+        </select>
+        <button class="btn-fetch" id="btn-fetch" onclick="fetchFacilityData()">Fetch Facility Data</button>
+    </section>
+
+    <!-- Section 1: Operator Audit Trail -->
+    <section class="section-panel">
+        <div class="section-title">
+            <span>Operator Action Log (System Audit Trail)</span>
+            <span style="font-size: 0.9rem; color: var(--text-label);">Last 72 Hours</span>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Timestamp (IST)</th>
+                    <th>User ID</th>
+                    <th>Action / Command Executed</th>
+                    <th>Tag / Subsystem</th>
+                </tr>
+            </thead>
+            <tbody id="audit-table-body">
+                <tr>
+                    <td class="mono-text">2026-08-24 14:22:15</td>
+                    <td>OP-4992</td>
+                    <td>Acknowledged High pH Alarm</td>
+                    <td>pH_SENSOR_01</td>
+                </tr>
+                <tr>
+                    <td class="mono-text">2026-08-24 10:05:00</td>
+                    <td>OP-4992</td>
+                    <td>Manual Override: SET TO ON</td>
+                    <td>DECANT_VALVE</td>
+                </tr>
+                <tr>
+                    <td class="mono-text">2026-08-23 21:15:30</td>
+                    <td>OP-1024</td>
+                    <td>Manual Override: SET TO OFF</td>
+                    <td>INFLUENT_PUMP</td>
+                </tr>
+                <tr>
+                    <td class="mono-text">2026-08-23 18:00:12</td>
+                    <td>OP-1024</td>
+                    <td>Session Authenticated (Login)</td>
+                    <td>SYS_AUTH</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Section 2: Environmental Compliance Log -->
+    <section class="section-panel">
+        <div class="section-title">
+            <span>Environmental Compliance (Daily Averages)</span>
+            <span style="font-size: 0.9rem; color: var(--text-label);">CPCB Verified Data</span>
+        </div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Avg pH (Limit: 5.5-9.0)</th>
+                    <th>Avg Temp (Limit: < 35°C)</th>
+                    <th>Avg TDS (Limit: < 2100)</th>
+                    <th>Avg Turbidity (Limit: < 30)</th>
+                    <th>Daily Status</th>
+                </tr>
+            </thead>
+            <tbody id="compliance-table-body">
+                <!-- Data populated dynamically via JS -->
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Section 3: Predictive Maintenance -->
+    <section class="section-panel">
+        <div class="section-title">Hardware Lifecycle Tracking (Predictive Maintenance)</div>
+        <div class="maintenance-grid">
+            
+            <!-- Aeration Blower -->
+            <div class="maint-card">
+                <div class="maint-header">Aeration Blower / Pump</div>
+                <div class="progress-container">
+                    <div class="progress-fill" id="fill-aeration" style="width: 82.4%;"></div>
+                </div>
+                <div class="maint-stats">
+                    <span id="stat-aeration">4,120 Hours</span>
+                    <span>Max: 5,000 Hrs</span>
+                </div>
+                <div style="margin-top: 10px; font-size: 0.85rem; font-weight: bold; color: var(--text-main);">
+                    STATUS: HEALTHY
+                </div>
+            </div>
+
+            <!-- Influent Valve -->
+            <div class="maint-card">
+                <div class="maint-header">Influent Solenoid Valve</div>
+                <div class="progress-container">
+                    <div class="progress-fill" id="fill-influent" style="width: 35.6%;"></div>
+                </div>
+                <div class="maint-stats">
+                    <span id="stat-influent">3,560 Cycles</span>
+                    <span>Max: 10,000 Cycles</span>
+                </div>
+                <div style="margin-top: 10px; font-size: 0.85rem; font-weight: bold; color: var(--text-main);">
+                    STATUS: OPTIMAL
+                </div>
+            </div>
+
+            <!-- Decant Valve -->
+            <div class="maint-card">
+                <div class="maint-header">Decant Solenoid Valve</div>
+                <div class="progress-container">
+                    <div class="progress-fill" id="fill-decant" style="width: 94.2%;"></div>
+                </div>
+                <div class="maint-stats">
+                    <span id="stat-decant">9,420 Cycles</span>
+                    <span>Max: 10,000 Cycles</span>
+                </div>
+                <div style="margin-top: 10px; font-size: 0.85rem; font-weight: bold; color: var(--text-main);">
+                    STATUS: REVIEW RECOMMENDED
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <script>
+        // --- Simulated CSV Export ---
+        function exportCSV() {
+            const currentPlant = document.getElementById('plant-selector').value;
+            alert(`Generating Secure Payload...\n\n30-Day compliance logs, telemetry, and operator audit trail for ${currentPlant} successfully exported.`);
+        }
+
+        // --- Fetch New Facility Data (Simulation) ---
+        function fetchFacilityData() {
+            const btn = document.getElementById('btn-fetch');
+            const selector = document.getElementById('plant-selector');
+            const selectedID = selector.value;
+
+            // UI Loading state
+            btn.innerText = "FETCHING DB...";
+            btn.disabled = true;
+
+            // Artificial network delay simulation
+            setTimeout(() => {
+                // Update Global Header
+                document.getElementById('header-facility-id').innerText = 'Facility ID: ' + selectedID;
+
+                // Regenerate data tables with simulated variances
+                generateComplianceLogs(true);
+                updateMaintenanceData();
+
+                // Reset UI
+                btn.innerText = "FETCH FACILITY DATA";
+                btn.disabled = false;
+            }, 800); // 800ms delay
+        }
+
+        // --- Populate Compliance Table ---
+        function generateComplianceLogs(randomize = false) {
+            const tbody = document.getElementById('compliance-table-body');
+            let html = '';
+            
+            // Anchor to system date context
+            const today = new Date("2026-08-24T00:00:00"); 
+            
+            for (let i = 0; i < 4; i++) {
+                let logDate = new Date(today);
+                logDate.setDate(today.getDate() - i);
+                let dateString = logDate.toISOString().split('T')[0];
+                
+                // Base values or randomized values for new facility fetch
+                let ph = randomize ? (7.0 + Math.random() * 0.5).toFixed(2) : (7.2 + (i * 0.05)).toFixed(2);
+                let temp = randomize ? (23.5 + Math.random() * 2.0).toFixed(1) : (24.5 - (i * 0.1)).toFixed(1);
+                let tds = randomize ? Math.floor(1750 + Math.random() * 200) : 1850 - (i * 5);
+                let turb = randomize ? (10.0 + Math.random() * 4.0).toFixed(1) : (12.4 + (i * 0.2)).toFixed(1);
+
+                html += `
+                    <tr>
+                        <td class="mono-text">${dateString}</td>
+                        <td class="mono-text">${ph}</td>
+                        <td class="mono-text">${temp}</td>
+                        <td class="mono-text">${tds}</td>
+                        <td class="mono-text">${turb}</td>
+                        <td style="font-weight:bold;">COMPLIANT</td>
+                    </tr>
+                `;
+            }
+            tbody.innerHTML = html;
+        }
+
+        // --- Simulate Maintenance Data Shifts ---
+        function updateMaintenanceData() {
+            // Randomize progress widths slightly to simulate different plant hardware states
+            const aerHours = Math.floor(2000 + Math.random() * 2500);
+            const infCycles = Math.floor(1000 + Math.random() * 8000);
+            const decCycles = Math.floor(5000 + Math.random() * 4500);
+
+            // Calculate percentages
+            const aerPct = ((aerHours / 5000) * 100).toFixed(1);
+            const infPct = ((infCycles / 10000) * 100).toFixed(1);
+            const decPct = ((decCycles / 10000) * 100).toFixed(1);
+
+            // Apply to DOM
+            document.getElementById('fill-aeration').style.width = aerPct + '%';
+            document.getElementById('stat-aeration').innerText = aerHours.toLocaleString() + ' Hours';
+
+            document.getElementById('fill-influent').style.width = infPct + '%';
+            document.getElementById('stat-influent').innerText = infCycles.toLocaleString() + ' Cycles';
+
+            document.getElementById('fill-decant').style.width = decPct + '%';
+            document.getElementById('stat-decant').innerText = decCycles.toLocaleString() + ' Cycles';
+        }
+
+        // Initialize table on load
+        window.onload = () => generateComplianceLogs(false);
+    </script>
+</body>
+</html>
