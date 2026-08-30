@@ -3,594 +3,932 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SBR HMI | Operator Control Room</title>
-    <!-- Global ISA-101 Dark Mode Theme -->
-    <link rel="stylesheet" href="scada-theme.css">
-    <!-- Chart.js CDN for Historical Trending -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>SBR HMI | Master Control SPA</title>
     <style>
-        /* Specific overrides & new components for Task 22 */
-        button:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-            background-color: var(--btn-base) !important;
-            border-color: var(--border-dark) !important;
-            color: var(--text-muted) !important;
+        /* =========================================
+           MODERN FLAT INDUSTRIAL SCADA THEME (DARK)
+           ========================================= */
+        :root {
+            /* Palette */
+            --bg-window: #14161a;
+            --bg-panel: #21252b;
+            --bg-faceplate: #282c34;
+            --bg-input: #0b0c10;
+            --border-flat: #5c6370;
+            
+            /* Typography */
+            --text-main: #abb2bf;
+            --text-bright: #ffffff;
+            --text-muted: #5c6370;
+            
+            /* SCADA States */
+            --pv-green: #98c379;
+            --sp-blue: #61afef;
+            --alarm-red: #e06c75;
+            --warn-yellow: #e5c07b;
+            --btn-surface: #3a3f4b;
         }
 
-        .chart-controls input[type="date"] {
-            background-color: var(--input-bg);
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-window);
             color: var(--text-main);
-            border: 1px solid var(--border-light);
-            padding: 4px 8px;
-            font-family: monospace;
-            outline: none;
-            margin-left: 15px;
-        }
-
-        /* --- Tabbed Sub-Navigation --- */
-        .sub-nav {
+            margin: 0;
+            height: 100vh;
             display: flex;
-            margin-bottom: 15px;
-            border-bottom: 2px solid var(--border-light);
-        }
-        .sub-nav button {
-            flex: 1;
-            padding: 12px;
-            font-size: 1.1rem;
-            background-color: var(--panel-bg);
-            color: var(--text-muted);
-            border: 1px solid var(--border-dark);
-            border-bottom: none;
-            text-transform: uppercase;
-            font-weight: bold;
-            transition: 0.2s;
-        }
-        .sub-nav button.active {
-            background-color: var(--border-dark);
-            color: #ffffff;
-            border-top: 3px solid var(--border-light);
-        }
-        .view-container {
-            display: none;
-            flex-grow: 1;
-        }
-        .view-container.active {
-            display: grid;
+            flex-direction: column;
+            overflow: hidden;
         }
 
-        /* --- EQ Tank Level Indicator --- */
-        .tank-wrapper {
+        /* --- Global Header --- */
+        .global-header {
+            background-color: #1e2227;
+            border-bottom: 1px solid var(--border-flat);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 60px;
+            flex-shrink: 0;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .header-title h1 {
+            margin: 0;
+            font-size: 1.4rem;
+            color: var(--text-bright);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .header-meta {
             display: flex;
             gap: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .header-meta span {
+            background: var(--bg-input);
+            padding: 4px 10px;
+            border: 1px solid var(--border-flat);
+            border-radius: 2px;
+        }
+
+        .status-normal { color: var(--pv-green); }
+
+        /* --- Unit Navigation Bar --- */
+        .unit-nav {
+            display: flex;
+            background-color: var(--bg-panel);
+            padding: 10px 20px 0 20px;
+            gap: 5px;
+            border-bottom: 1px solid var(--border-flat);
+            flex-shrink: 0;
+        }
+
+        .nav-btn {
+            background-color: var(--btn-surface);
+            color: var(--text-main);
+            border: 1px solid var(--border-flat);
+            border-bottom: none;
+            padding: 12px 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 4px 4px 0 0;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .nav-btn:hover {
+            background-color: #4b5363;
+            color: var(--text-bright);
+        }
+
+        .nav-btn.active {
+            background-color: var(--bg-faceplate);
+            color: var(--text-bright);
+            border-top: 3px solid var(--sp-blue);
+            margin-bottom: -1px;
+        }
+
+        /* --- Master SPA Layout (Asymmetric Grid) --- */
+        .spa-layout {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 15px;
+            padding: 15px;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        /* --- Left Column (Dynamic Control Zone) --- */
+        .left-col {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .dynamic-view {
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .dynamic-view.active {
+            display: flex;
+        }
+
+        /* Flat Industrial Faceplates */
+        .faceplate {
+            background-color: var(--bg-faceplate);
+            border: 1px solid var(--border-flat);
+            border-radius: 4px;
+            padding: 15px;
+        }
+
+        .fp-title {
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--text-bright);
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-flat);
+            padding-bottom: 8px;
+            margin-bottom: 15px;
+            letter-spacing: 0.5px;
+        }
+
+        /* Inputs & Readouts */
+        .ctrl-row {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
+            margin-bottom: 10px;
         }
-        .tank-graphic {
+
+        .ctrl-label {
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .digital-readout {
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-flat);
+            color: var(--pv-green);
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 4px 8px;
+            text-align: right;
+            min-width: 90px;
+            border-radius: 2px;
+        }
+        
+        .digital-input {
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-flat);
+            color: var(--sp-blue);
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 1.1rem;
+            font-weight: bold;
+            padding: 4px 8px;
+            text-align: right;
+            width: 90px;
+            border-radius: 2px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .digital-input:focus {
+            border-color: var(--sp-blue);
+        }
+
+        /* Flat Industrial Buttons */
+        .ind-btn {
+            background-color: var(--btn-surface);
+            color: var(--text-main);
+            border: 1px solid var(--border-flat);
+            padding: 6px 14px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            cursor: pointer;
+            border-radius: 2px;
+            transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+        }
+
+        .ind-btn:hover {
+            background-color: #4b5363;
+            border-color: var(--sp-blue);
+            color: var(--text-bright);
+        }
+
+        .ind-btn.btn-on {
+            background-color: var(--pv-green);
+            border-color: var(--pv-green);
+            color: #000000;
+        }
+
+        .ind-btn.btn-on:hover {
+            background-color: #88b068;
+            border-color: #88b068;
+        }
+
+        /* EQ Tank Visualizer */
+        .tank-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .tank-vbar {
+            width: 50px;
             height: 180px;
-            width: 60px;
-            border: 2px solid var(--border-light);
-            background-color: var(--bg-base);
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-flat);
             position: relative;
+            border-radius: 2px;
         }
+
         .tank-fill {
             position: absolute;
             bottom: 0;
             width: 100%;
-            background-color: #5a7d9a; /* ISA-101 muted blue */
+            background-color: var(--sp-blue);
             height: 45%;
-            transition: height 1s ease;
+            transition: height 0.5s ease;
         }
-        .tank-alarm-line {
+
+        .alarm-line {
             position: absolute;
             width: 100%;
-            border-top: 1px dashed var(--alarm-red);
+            border-top: 2px dashed;
             z-index: 2;
         }
-        .tank-alarm-line.hh { top: 10%; }
-        .tank-alarm-line.ll { bottom: 10%; }
-        
-        .tank-controls { flex-grow: 1; }
-        .duty-toggle { display: flex; gap: 5px; margin-top: 10px; }
-        .duty-toggle button { flex: 1; }
+        .alarm-hh { top: 10%; border-color: var(--alarm-red); }
+        .alarm-ll { bottom: 10%; border-color: var(--warn-yellow); }
 
-        /* --- PID & Interlock Inputs --- */
-        .pid-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-        .pid-input {
+        /* Sequencer Blocks */
+        .seq-container {
             display: flex;
-            flex-direction: column;
-        }
-        .pid-input label { font-size: 0.8rem; color: var(--text-muted); font-weight: bold; margin-bottom: 4px; }
-        .pid-input input { background: var(--input-bg); border: 1px solid var(--border-dark); color: white; padding: 6px; font-family: monospace; }
-        
-        .lockout-banner {
-            background-color: rgba(251, 192, 45, 0.1);
-            border: 1px solid var(--alarm-yellow);
-            color: var(--alarm-yellow);
-            padding: 8px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 0.85rem;
+            gap: 4px;
             margin-top: 10px;
         }
 
-        /* --- Backwash Stepper --- */
-        .bw-stepper {
-            display: flex;
-            gap: 5px;
-            margin-top: 15px;
-        }
-        .bw-step {
+        .seq-block {
             flex: 1;
-            background-color: var(--bg-base);
-            border: 1px solid var(--border-dark);
-            color: var(--text-muted);
-            font-size: 0.7rem;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-flat);
             text-align: center;
             padding: 8px 4px;
+            font-size: 0.75rem;
             font-weight: bold;
-            transition: 0.3s;
-        }
-        .bw-step.active {
-            background-color: var(--status-green);
-            color: white;
-            border-color: #fff;
+            color: var(--text-muted);
+            border-radius: 2px;
+            transition: 0.2s;
         }
 
-        .data-readout {
-            font-family: monospace;
-            font-size: 1.4rem;
-            color: #fff;
-            background: var(--bg-base);
-            padding: 5px 10px;
-            border: 1px solid var(--border-dark);
-            display: inline-block;
+        .seq-block.active {
+            background-color: var(--pv-green);
+            color: #000000;
+            border-color: var(--pv-green);
+            box-shadow: 0 0 8px rgba(152, 195, 121, 0.4);
+        }
+
+        /* Radio Buttons Box */
+        .radio-box {
+            border: 1px solid var(--border-flat);
+            background-color: var(--bg-input);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            border-radius: 2px;
+        }
+        .radio-box label {
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-bright);
+        }
+        .radio-box input[type="radio"] {
+            accent-color: var(--sp-blue);
+            cursor: pointer;
+        }
+
+        /* Left Footer (Alarms/CSV) */
+        .left-footer {
+            margin-top: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .alarm-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            background-color: var(--bg-faceplate);
+            border: 1px solid var(--border-flat);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .alarm-table th {
+            background-color: #1e2227;
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-flat);
+            color: var(--text-muted);
+        }
+        .alarm-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-flat);
+        }
+        .row-alarm { background-color: rgba(224, 108, 117, 0.15); color: var(--alarm-red); }
+        
+        .csv-btn {
+            width: 100%;
+            padding: 12px;
+            font-size: 0.95rem;
+            background-color: var(--btn-surface);
+        }
+
+        /* --- Right Column (Persistent Zone) --- */
+        .right-col {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: 100%;
+        }
+
+        .telemetry-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .data-card {
+            background-color: var(--bg-faceplate);
+            border: 1px solid var(--border-flat);
+            border-radius: 4px;
+            padding: 12px 15px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .data-card .lbl { font-size: 0.8rem; font-weight: bold; color: var(--text-muted); text-transform: uppercase; }
+        .data-card .val { font-family: 'Consolas', monospace; font-size: 1.6rem; font-weight: bold; color: var(--text-bright); margin-top: 5px; }
+        .data-card .unit { font-size: 0.8rem; color: var(--text-muted); }
+
+        .chart-panel {
+            background-color: var(--bg-faceplate);
+            border: 1px solid var(--border-flat);
+            border-radius: 4px;
+            padding: 15px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .chart-header select {
+            background-color: var(--bg-input);
+            color: var(--sp-blue);
+            border: 1px solid var(--border-flat);
+            padding: 6px 10px;
+            font-family: 'Consolas', monospace;
+            font-weight: bold;
+            outline: none;
+            cursor: pointer;
+            border-radius: 2px;
+        }
+
+        .canvas-wrapper {
+            flex-grow: 1;
+            position: relative;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-flat);
+            border-radius: 2px;
+            padding: 5px;
         }
     </style>
 </head>
 <body>
 
-    <div id="global-alarm-banner">CRITICAL ALARM: SYSTEM FAULT</div>
-
-    <header class="hmi-header">
-        <div class="header-info">
-            <h1>SBR Main Control Interface</h1>
+    <!-- GLOBAL HEADER -->
+    <header class="global-header">
+        <div class="header-title">
+            <h1>SBR MAIN CONTROL</h1>
             <div class="header-meta">
-                <span>Facility ID: SBR-BLR-001</span>
-                <span>Batch: #SBR-8492</span>
-                <span>Operator: O-2465554</span>
-                <span>Status: <span style="color: var(--status-green);">NORMAL</span></span>
-                <span id="sys-clock">--:--:--</span>
+                <span>Facility: SBR-BLR-001</span>
             </div>
         </div>
-        <div>
-            <button onclick="window.location.href='index.html'">Logout</button>
-            <button style="background-color: var(--alarm-red); color: white; margin-left: 10px;" onclick="triggerEStop()">E-STOP</button>
+        <div class="header-meta">
+            <span>Batch: #SBR-8492</span>
+            <span>OP: O-2465554</span>
+            <span>Status: <b class="status-normal">NORMAL</b></span>
         </div>
     </header>
 
-    <!-- Sub Navigation Tabs -->
-    <div class="sub-nav">
-        <button id="btn-tab-sbr" class="active" onclick="switchTab('sbr')">SBR Core Process</button>
-        <button id="btn-tab-aux" onclick="switchTab('aux')">Auxiliary Systems</button>
-    </div>
+    <!-- UNIT NAVIGATION BAR -->
+    <nav class="unit-nav">
+        <button id="nav-sbr" class="nav-btn active">SBR CORE PROCESS</button>
+        <button id="nav-pre" class="nav-btn">PRE-TREATMENT & FILTRATION</button>
+        <button id="nav-sludge" class="nav-btn">SLUDGE DEWATERING</button>
+    </nav>
 
-    <!-- ========================================== -->
-    <!-- VIEW 1: SBR CORE PROCESS (Main SBR Ops)    -->
-    <!-- ========================================== -->
-    <div id="view-sbr" class="dashboard-grid view-container active">
+    <!-- MASTER SPA LAYOUT -->
+    <main class="spa-layout">
         
-        <!-- MODULE: EQ Tank & Process Controls -->
-        <div class="panel" style="grid-row: span 2;">
-            <div class="panel-header">EQ Tank & Process Controls</div>
+        <!-- LEFT COLUMN: DYNAMIC CONTROL ZONE -->
+        <section class="left-col">
             
-            <!-- EQ Tank Visualization -->
-            <div class="tank-wrapper" style="margin-bottom: 20px;">
-                <div class="tank-graphic">
-                    <div class="tank-alarm-line hh" title="High-High Alarm"></div>
-                    <div class="tank-fill" id="eq-level"></div>
-                    <div class="tank-alarm-line ll" title="Low-Low Alarm"></div>
+            <!-- DIV 1: SBR CORE PROCESS -->
+            <div id="view-sbr" class="dynamic-view active">
+                
+                <!-- EQ Tank & Pumps -->
+                <div class="faceplate">
+                    <div class="fp-title">EQ Tank & Transfer Pumps</div>
+                    <div class="tank-container">
+                        <div class="tank-vbar">
+                            <div class="alarm-line alarm-hh" title="High-High Limit"></div>
+                            <div class="tank-fill" id="eq-fill-bar"></div>
+                            <div class="alarm-line alarm-ll" title="Low-Low Limit"></div>
+                        </div>
+                        <div style="flex-grow: 1;">
+                            <div class="ctrl-row">
+                                <span class="ctrl-label">Level (PV)</span>
+                                <div class="digital-readout" id="eq-pv">45.0%</div>
+                            </div>
+                            <div class="ctrl-row">
+                                <span class="ctrl-label">Duty Select</span>
+                                <div>
+                                    <button class="ind-btn btn-on duty-toggle" data-pump="p1">PUMP 1</button>
+                                    <button class="ind-btn duty-toggle" data-pump="p2">PUMP 2</button>
+                                </div>
+                            </div>
+                            <div class="ctrl-row">
+                                <span class="ctrl-label">Pump Status</span>
+                                <div>
+                                    <button class="ind-btn btn-on mode-toggle" data-mode="auto">AUTO</button>
+                                    <button class="ind-btn mode-toggle" data-mode="man">MAN</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="tank-controls">
-                    <div style="font-weight:bold; color:var(--text-muted); font-size:0.9rem;">EQ TANK LEVEL</div>
-                    <div class="data-readout" id="eq-readout">45.2%</div>
-                    
-                    <div style="margin-top:15px; font-weight:bold; font-size:0.85rem;">TRANSFER PUMP DUTY</div>
-                    <div class="duty-toggle">
-                        <button id="duty-p1" class="active-auto" onclick="setDuty('p1')">PUMP A (DUTY)</button>
-                        <button id="duty-p2" onclick="setDuty('p2')">PUMP B (STBY)</button>
+
+                <!-- Master Timers -->
+                <div class="faceplate">
+                    <div class="fp-title">Master Sequencing Timers (Minutes)</div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="ctrl-row"><span class="ctrl-label">Fill</span><input type="number" class="digital-input" value="15"></div>
+                        <div class="ctrl-row"><span class="ctrl-label">React</span><input type="number" class="digital-input" value="150"></div>
+                        <div class="ctrl-row"><span class="ctrl-label">Settle</span><input type="number" class="digital-input" value="45"></div>
+                        <div class="ctrl-row"><span class="ctrl-label">Decant</span><input type="number" class="digital-input" value="30"></div>
+                    </div>
+                </div>
+
+                <!-- Fill & Blower Config -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="faceplate" style="margin-bottom: 0;">
+                        <div class="fp-title">Fill Mode</div>
+                        <div class="radio-box">
+                            <label><input type="radio" name="fill-mode" checked> Static Fill</label>
+                            <label><input type="radio" name="fill-mode"> Aerated Fill</label>
+                            <label><input type="radio" name="fill-mode"> Mixed Fill</label>
+                        </div>
+                    </div>
+                    <div class="faceplate" style="margin-bottom: 0;">
+                        <div class="fp-title">Blower VFDs</div>
+                        <div class="ctrl-row">
+                            <span class="ctrl-label">BLW-01 (%)</span>
+                            <input type="number" class="digital-input" value="75.0">
+                        </div>
+                        <div class="ctrl-row">
+                            <span class="ctrl-label">BLW-02 (%)</span>
+                            <input type="number" class="digital-input" value="0.0">
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Interlocks & PIDs -->
-            <div style="font-weight:bold; font-size:0.9rem; margin-bottom: 10px; border-bottom: 1px solid var(--border-dark); padding-bottom: 5px;">PID SETPOINTS & INTERLOCKS</div>
-            <div class="pid-grid">
-                <div class="pid-input">
-                    <label>DO Target (mg/L)</label>
-                    <input type="number" step="0.1" value="2.0">
+            <!-- DIV 2: PRE-TREATMENT & FILTRATION -->
+            <div id="view-pre" class="dynamic-view">
+                <div class="faceplate">
+                    <div class="fp-title">Bar Screen & Grit Chamber</div>
+                    <div class="ctrl-row">
+                        <span class="ctrl-label">Screen Diff. Level</span>
+                        <div class="digital-readout">145 mm</div>
+                    </div>
+                    <div class="ctrl-row">
+                        <span class="ctrl-label">Auto-Rake Override</span>
+                        <button class="ind-btn action-trigger">FORCE RAKE CYCLE</button>
+                    </div>
                 </div>
-                <div class="pid-input">
-                    <label>ORP Target (mV)</label>
-                    <input type="number" value="150">
-                </div>
-            </div>
-            <button style="width: 100%; margin-bottom: 15px;" onclick="alert('PID Setpoints Pushed.')">APPLY PIDs</button>
 
-            <div id="agitation-lockout" class="lockout-banner">AGITATION LOCKOUT ACTIVE (SETTLE PHASE)</div>
-
-            <!-- Manual Overrides -->
-            <div style="font-weight:bold; font-size:0.9rem; margin: 15px 0 10px 0; border-bottom: 1px solid var(--border-dark); padding-bottom: 5px;">VALVE / BLOWER OVERRIDES</div>
-            <div class="control-row">
-                <span class="control-label">Influent Valve</span>
-                <div class="toggle-group">
-                    <button class="active-auto">AUTO</button>
-                    <button>MAN</button>
-                    <button disabled style="margin-left: 10px;">ON</button>
-                    <button class="active-on" disabled>OFF</button>
-                </div>
-            </div>
-            <div class="control-row">
-                <span class="control-label">Aeration Blower</span>
-                <div class="toggle-group">
-                    <button class="active-auto">AUTO</button>
-                    <button>MAN</button>
-                    <button class="active-on" disabled style="margin-left: 10px;">ON</button>
-                    <button disabled>OFF</button>
+                <div class="faceplate">
+                    <div class="fp-title">Tertiary Filter Auto-Backwash</div>
+                    <div class="ctrl-row">
+                        <span class="ctrl-label">Filter DP (Bar)</span>
+                        <div class="digital-readout">0.82 Bar</div>
+                    </div>
+                    <div class="seq-container" id="filter-seq-container">
+                        <div class="seq-block">OFFLINE</div>
+                        <div class="seq-block">AIR SCOUR</div>
+                        <div class="seq-block">WATER WASH</div>
+                        <div class="seq-block">RINSE</div>
+                        <div class="seq-block active">SERVICE</div>
+                    </div>
+                    <button class="ind-btn action-trigger" id="btn-trigger-backwash" style="margin-top: 15px; width: 100%;">TRIGGER MANUAL BACKWASH</button>
                 </div>
             </div>
-            <div class="control-row">
-                <span class="control-label">Decant Valve</span>
-                <div class="toggle-group">
-                    <button class="active-auto">AUTO</button>
-                    <button>MAN</button>
-                    <button disabled style="margin-left: 10px;">ON</button>
-                    <button class="active-on" disabled>OFF</button>
+
+            <!-- DIV 3: SLUDGE DEWATERING -->
+            <div id="view-sludge" class="dynamic-view">
+                <div class="faceplate">
+                    <div class="fp-title">Sludge Holding Tank</div>
+                    <div class="ctrl-row">
+                        <span class="ctrl-label">Tank Mixer</span>
+                        <div>
+                            <button class="ind-btn btn-on mixer-toggle" data-state="on">ON</button>
+                            <button class="ind-btn mixer-toggle" data-state="off">OFF</button>
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <span class="ctrl-label">Polymer Dose (kg/T)</span>
+                        <input type="number" class="digital-input" value="3.2" step="0.1">
+                    </div>
+                </div>
+
+                <div class="faceplate">
+                    <div class="fp-title">Filter Press Sequencer</div>
+                    <div class="seq-container" id="press-seq-container" style="margin-bottom: 15px;">
+                        <div class="seq-block active">PRESS OPEN</div>
+                        <div class="seq-block">PRESS CLOSE</div>
+                        <div class="seq-block">SLUDGE FEED</div>
+                        <div class="seq-block">PR. HOLD</div>
+                        <div class="seq-block">BLOWDOWN</div>
+                    </div>
+                    <button class="ind-btn action-trigger" id="btn-trigger-press" style="width: 100%;">INITIATE PRESS CYCLE</button>
                 </div>
             </div>
-        </div>
 
-        <!-- MODULE: Telemetry & Trending -->
-        <div class="panel" style="grid-row: span 2;">
-            <div class="panel-header">Real-Time Telemetry & Trends</div>
-            
-            <div class="telemetry-live-grid">
-                <div class="tel-card"><div class="tel-lbl">pH Level</div><div class="tel-val" id="val-ph">7.20</div><div class="tel-unit">pH</div></div>
-                <div class="tel-card"><div class="tel-lbl">Temp</div><div class="tel-val" id="val-temp">24.5</div><div class="tel-unit">°C</div></div>
-                <div class="tel-card"><div class="tel-lbl">TDS</div><div class="tel-val" id="val-tds">1850</div><div class="tel-unit">mg/L</div></div>
-                <div class="tel-card"><div class="tel-lbl">Turbidity</div><div class="tel-val" id="val-turb">12.4</div><div class="tel-unit">NTU</div></div>
-                
-                <div class="tel-card"><div class="tel-lbl">DO</div><div class="tel-val" id="val-do">2.1</div><div class="tel-unit">mg/L</div></div>
-                <div class="tel-card"><div class="tel-lbl">MLSS</div><div class="tel-val" id="val-mlss">2800</div><div class="tel-unit">mg/L</div></div>
-                <div class="tel-card"><div class="tel-lbl">BOD</div><div class="tel-val" id="val-bod">25.0</div><div class="tel-unit">mg/L</div></div>
-                <div class="tel-card"><div class="tel-lbl">F/M Ratio</div><div class="tel-val" id="val-fm">0.15</div><div class="tel-unit">-</div></div>
-            </div>
-
-            <div class="chart-controls">
-                <label style="font-weight:bold; font-size:0.8rem;">TREND:</label>
-                <select id="trend-selector" onchange="updateChartParameter()">
-                    <option value="ph">pH Level</option>
-                    <option value="temp">Temperature</option>
-                    <option value="tds">TDS</option>
-                    <option value="turb">Turbidity</option>
-                    <option value="do">Dissolved O2</option>
-                </select>
-                <label style="font-weight:bold; font-size:0.8rem; margin-left:10px;">DATE:</label>
-                <input type="date" id="history-date">
-            </div>
-            <div class="chart-container">
-                <canvas id="trendChart"></canvas>
-            </div>
-        </div>
-
-        <!-- MODULE: SBR Master Sequencing -->
-        <div class="panel">
-            <div class="panel-header">Master SBR Sequencing</div>
-            <div class="phase-indicator">
-                <div class="phase-box" id="ph-idle">IDLE</div>
-                <div class="phase-box" id="ph-fill">FILL</div>
-                <div class="phase-box active" id="ph-react">REACT</div>
-                <div class="phase-box" id="ph-settle">SETTLE</div>
-                <div class="phase-box" id="ph-decant">DECANT</div>
+            <!-- COMMON LEFT FOOTER -->
+            <div class="left-footer">
+                <table class="alarm-table">
+                    <thead>
+                        <tr><th>TIME</th><th>TAG</th><th>MESSAGE</th><th>ACTION</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr class="row-alarm">
+                            <td>14:22:10</td>
+                            <td>FT-102</td>
+                            <td>Flow Meter Comm Loss</td>
+                            <td><button class="ind-btn ack-btn">ACK</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <button class="ind-btn csv-btn" id="btn-download-csv">DOWNLOAD SHIFT REPORT (CSV)</button>
             </div>
             
-            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                <button style="flex: 1; background-color: var(--status-green); color: white; border: none;" onclick="alert('START COMMAND SENT')">START BATCH</button>
-                <button style="flex: 1; background-color: var(--alarm-yellow); color: #000; border: none;" onclick="alert('HOLD COMMAND SENT')">HOLD BATCH</button>
-            </div>
+        </section>
 
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 15px;">
-                <div class="pid-input"><label>Fill (m)</label><input type="number" value="15"></div>
-                <div class="pid-input"><label>React (m)</label><input type="number" value="150"></div>
-                <div class="pid-input"><label>Settle (m)</label><input type="number" value="45"></div>
-                <div class="pid-input"><label>Decant (m)</label><input type="number" value="30"></div>
-            </div>
-            <button style="width: 100%; margin-bottom: 10px;" onclick="alert('Timers saved.')">APPLY TIMERS</button>
-            <button style="width: 100%; border-color: var(--text-muted);" onclick="downloadCSV()">DOWNLOAD SHIFT REPORT (CSV)</button>
-        </div>
-
-        <!-- MODULE: Diagnostics & Alarms -->
-        <div class="panel">
-            <div class="panel-header">Diagnostics & Alarms</div>
-            <div class="fault-grid">
-                <div class="fault-indicator" id="stat-rtu">RTU-01: ONLINE</div>
-                <div class="fault-indicator" id="stat-inf">EQ PUMP A: OK</div>
-                <div class="fault-indicator offline" id="stat-aer">BLOWER: OFFLINE</div>
-            </div>
-            <table class="alarm-table">
-                <thead><tr><th>Time</th><th>Tag</th><th>Description</th><th>Action</th></tr></thead>
-                <tbody id="alarm-body">
-                    <tr class="row-critical" id="alm-1">
-                        <td>18:42:10</td><td>SYS_COM</td><td>Blower telemetry lost</td>
-                        <td><button class="btn-ack" onclick="ackAlarm('alm-1')">ACK</button></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-
-    <!-- ========================================== -->
-    <!-- VIEW 2: AUXILIARY SYSTEMS                  -->
-    <!-- ========================================== -->
-    <div id="view-aux" class="dashboard-grid view-container">
-        
-        <!-- MODULE: Preliminary Treatment -->
-        <div class="panel">
-            <div class="panel-header">Preliminary Treatment</div>
+        <!-- RIGHT COLUMN: PERSISTENT ZONE -->
+        <section class="right-col">
             
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <div>
-                    <div style="font-weight:bold; font-size:0.85rem; color:var(--text-muted);">SCREEN DIFFERENTIAL LEVEL</div>
-                    <div class="data-readout">145 mm</div>
+            <!-- Telemetry Grid -->
+            <div class="telemetry-grid">
+                <div class="data-card"><span class="lbl">pH Level</span><span class="val" id="tele-ph">7.20</span><span class="unit">pH</span></div>
+                <div class="data-card"><span class="lbl">Temperature</span><span class="val" id="tele-temp">24.5</span><span class="unit">°C</span></div>
+                <div class="data-card"><span class="lbl">Dissolved O2</span><span class="val" id="tele-do">2.1</span><span class="unit">mg/L</span></div>
+                <div class="data-card"><span class="lbl">Turbidity</span><span class="val" id="tele-turb">12.4</span><span class="unit">NTU</span></div>
+                <div class="data-card"><span class="lbl">MLSS</span><span class="val" id="tele-mlss">2800</span><span class="unit">mg/L</span></div>
+                <div class="data-card"><span class="lbl">BOD</span><span class="val" id="tele-bod">25.0</span><span class="unit">mg/L</span></div>
+            </div>
+
+            <!-- Chart Panel -->
+            <div class="chart-panel">
+                <div class="chart-header">
+                    <span class="fp-title" style="border:none; margin:0; padding:0;">PROCESS TRENDS</span>
+                    <select id="trend-select">
+                        <option value="ph">pH Level</option>
+                        <option value="do">Dissolved Oxygen</option>
+                        <option value="turb">Turbidity</option>
+                    </select>
                 </div>
-                <div style="text-align: right; color: var(--text-muted); font-size: 0.8rem;">
-                    Warning Limit: 250 mm<br>Auto-Rake Limit: 150 mm
+                <div class="canvas-wrapper">
+                    <canvas id="trendChart"></canvas>
                 </div>
             </div>
 
-            <div class="control-row">
-                <span class="control-label">Mechanical Bar Screen</span>
-                <div class="toggle-group">
-                    <button class="active-auto">AUTO</button>
-                    <button>MAN</button>
-                    <button disabled style="margin-left: 10px;">ON</button>
-                    <button class="active-on" disabled>OFF</button>
-                </div>
-            </div>
-            
-            <div class="control-row">
-                <span class="control-label">Grit Chamber Agitator</span>
-                <div class="toggle-group">
-                    <button class="active-auto">AUTO</button>
-                    <button>MAN</button>
-                    <button class="active-on" disabled style="margin-left: 10px;">ON</button>
-                    <button disabled>OFF</button>
-                </div>
-            </div>
-        </div>
+        </section>
+        <!-- Chart.js CDN (Required for the persistent right column chart) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-        <!-- MODULE: Tertiary Filtration & Backwash -->
-        <div class="panel">
-            <div class="panel-header">Tertiary Filtration</div>
-            
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <div>
-                    <div style="font-weight:bold; font-size:0.85rem; color:var(--text-muted);">FILTER DIFF PRESSURE (DP)</div>
-                    <div class="data-readout" id="filter-dp">0.85 Bar</div>
-                </div>
-                <div style="text-align: right; color: var(--text-muted); font-size: 0.8rem;">
-                    Backwash Trip: 1.20 Bar<br>Status: FILTERING
-                </div>
-            </div>
-
-            <button style="width:100%; padding: 15px; font-size: 1rem; border-color: #4a90e2; color: #4a90e2;" onclick="initiateBackwash()" id="btn-backwash">INITIATE AUTO-BACKWASH</button>
-            
-            <!-- 5-Step Visualizer -->
-            <div class="bw-stepper">
-                <div class="bw-step" id="bw-1">1. OFFLINE</div>
-                <div class="bw-step" id="bw-2">2. AIR SCOUR</div>
-                <div class="bw-step" id="bw-3">3. WATER WASH</div>
-                <div class="bw-step" id="bw-4">4. RINSE</div>
-                <div class="bw-step" id="bw-5">5. SERVICE</div>
-            </div>
-        </div>
-
-        <!-- MODULE: Sludge Handling -->
-        <div class="panel">
-            <div class="panel-header">Sludge Handling & Dewatering</div>
-            
-            <div class="control-row">
-                <span class="control-label">Sludge Holding Mixer</span>
-                <div class="toggle-group">
-                    <button class="active-auto">AUTO</button>
-                    <button>MAN</button>
-                    <button disabled style="margin-left: 10px;">ON</button>
-                    <button class="active-on" disabled>OFF</button>
-                </div>
-            </div>
-
-            <div class="pid-input" style="margin-bottom: 15px;">
-                <label>Polymer Dosing Ratio (kg/T DS)</label>
-                <div style="display: flex; gap: 10px;">
-                    <input type="number" step="0.1" value="2.5" style="flex: 1;">
-                    <button>APPLY</button>
-                </div>
-            </div>
-
-            <button style="width: 100%; padding: 15px; font-size: 1.1rem; background-color: var(--border-dark); color: white;">START FILTER PRESS SEQUENCE</button>
-        </div>
-        
-        <!-- Auxiliary Placeholder / Spare Panel -->
-        <div class="panel">
-            <div class="panel-header">Auxiliary Diagnostics</div>
-            <div style="color: var(--text-muted); text-align: center; margin-top: 20px;">All auxiliary telemetry nodes responding.<br><br>UV Disinfection: <span style="color: var(--status-green); font-weight:bold;">100% Intensity</span><br>Washwater Pump: <span style="color: var(--status-green); font-weight:bold;">STANDBY</span></div>
-        </div>
-
-    </div>
-
-    <!-- Firebase v8 CDN Libraries -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-
+    <!-- Master SPA & SCADA Logic -->
     <script>
-        // --- 1. Tab Switching & Initialization ---
-        function switchTab(tabId) {
-            document.getElementById('btn-tab-sbr').classList.remove('active');
-            document.getElementById('btn-tab-aux').classList.remove('active');
-            document.getElementById('view-sbr').classList.remove('active');
-            document.getElementById('view-aux').classList.remove('active');
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // ==========================================
+            // 1. SPA TAB SWITCHING LOGIC
+            // ==========================================
+            const tabs = {
+                sbr: { btn: document.getElementById('nav-sbr'), view: document.getElementById('view-sbr') },
+                pre: { btn: document.getElementById('nav-pre'), view: document.getElementById('view-pre') },
+                sludge: { btn: document.getElementById('nav-sludge'), view: document.getElementById('view-sludge') }
+            };
 
-            document.getElementById('btn-tab-' + tabId).classList.add('active');
-            document.getElementById('view-' + tabId).classList.add('active');
-
-            // Force Chart.js to resize if switching back to SBR tab
-            if(tabId === 'sbr') {
+            function activateTab(targetKey) {
+                // Remove active classes from all buttons and views
+                Object.values(tabs).forEach(tab => {
+                    tab.btn.classList.remove('active');
+                    tab.view.classList.remove('active');
+                });
+                
+                // Add active class to target
+                tabs[targetKey].btn.classList.add('active');
+                tabs[targetKey].view.classList.add('active');
+                
+                // Force Chart.js to resize if returning to a view with active charts
                 window.dispatchEvent(new Event('resize'));
             }
-        }
 
-        setInterval(() => {
-            document.getElementById('sys-clock').innerText = new Date().toLocaleTimeString('en-IN', { hour12: false });
-        }, 1000);
+            // Bind click events
+            tabs.sbr.btn.addEventListener('click', () => activateTab('sbr'));
+            tabs.pre.btn.addEventListener('click', () => activateTab('pre'));
+            tabs.sludge.btn.addEventListener('click', () => activateTab('sludge'));
 
-        function triggerEStop() {
-            alert("E-STOP INITIATED. All hardware interlocks triggered.");
-            document.getElementById('global-alarm-banner').style.display = 'block';
-            document.getElementById('global-alarm-banner').innerText = "SYSTEM HALTED: EMERGENCY STOP ENGAGED";
-        }
 
-        // --- 2. SBR Core UI Logic ---
-        function setDuty(pumpId) {
-            document.getElementById('duty-p1').classList.remove('active-auto');
-            document.getElementById('duty-p2').classList.remove('active-auto');
-            document.getElementById('duty-' + pumpId).classList.add('active-auto');
-        }
-
-        // Simulate EQ tank level fluctuations
-        setInterval(() => {
-            let current = parseFloat(document.getElementById('eq-readout').innerText);
-            let next = current + (Math.random() * 2 - 1);
-            if(next > 95) next = 95; if(next < 5) next = 5;
-            document.getElementById('eq-readout').innerText = next.toFixed(1) + '%';
-            document.getElementById('eq-level').style.height = next + '%';
-        }, 3000);
-
-        // --- 3. Aux Systems UI Logic (Backwash Stepper) ---
-        function initiateBackwash() {
-            const btn = document.getElementById('btn-backwash');
-            btn.disabled = true;
-            btn.innerText = "BACKWASH SEQUENCE IN PROGRESS...";
-            btn.style.color = "var(--text-muted)";
+            // ==========================================
+            // 2. INDUSTRIAL BUTTON INTERACTIVITY
+            // ==========================================
             
-            const steps = [
-                document.getElementById('bw-1'),
-                document.getElementById('bw-2'),
-                document.getElementById('bw-3'),
-                document.getElementById('bw-4'),
-                document.getElementById('bw-5')
-            ];
-            
-            steps.forEach(s => s.classList.remove('active'));
-            let currentStep = 0;
+            // Generic Toggle Group Logic (Duty/Standby, Auto/Manual, On/Off)
+            function setupToggleGroup(selector) {
+                const buttons = document.querySelectorAll(selector);
+                buttons.forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const parent = e.target.parentElement;
+                        // Turn off siblings in the same group
+                        parent.querySelectorAll(selector).forEach(sibling => sibling.classList.remove('btn-on'));
+                        // Turn on clicked button
+                        e.target.classList.add('btn-on');
+                    });
+                });
+            }
 
-            const interval = setInterval(() => {
-                if(currentStep > 0) steps[currentStep-1].classList.remove('active');
-                if(currentStep < steps.length) {
-                    steps[currentStep].classList.add('active');
-                    currentStep++;
-                } else {
-                    clearInterval(interval);
-                    btn.disabled = false;
-                    btn.innerText = "INITIATE AUTO-BACKWASH";
-                    btn.style.color = "#4a90e2";
+            setupToggleGroup('.duty-toggle');
+            setupToggleGroup('.mode-toggle');
+            setupToggleGroup('.mixer-toggle');
+
+            // Alarm Acknowledgement Logic
+            const ackBtns = document.querySelectorAll('.ack-btn');
+            ackBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const row = e.target.closest('tr');
+                    if (row) {
+                        row.classList.remove('row-alarm');
+                        row.style.color = 'var(--text-muted)';
+                    }
+                    e.target.innerText = "ACK'D";
+                    e.target.disabled = true;
+                    e.target.classList.remove('btn-on');
+                    e.target.style.opacity = '0.5';
+                    e.target.style.cursor = 'not-allowed';
+                });
+            });
+
+            // Momentary Action Buttons (Flash visual effect for one-off commands)
+            const actionBtns = document.querySelectorAll('.action-trigger:not(#btn-trigger-backwash):not(#btn-trigger-press)');
+            actionBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.target.classList.add('btn-on');
+                    setTimeout(() => e.target.classList.remove('btn-on'), 300);
+                });
+            });
+
+
+            // ==========================================
+            // 3. VISUAL SEQUENCERS
+            // ==========================================
+            
+            // Reusable Sequencer Function
+            function triggerSequence(btnId, containerId, activeText, originalText) {
+                const btn = document.getElementById(btnId);
+                const blocks = document.querySelectorAll(`#${containerId} .seq-block`);
+                if (!btn || blocks.length === 0) return;
+
+                btn.addEventListener('click', () => {
+                    btn.disabled = true;
+                    btn.innerText = activeText;
+                    btn.style.opacity = '0.7';
+
+                    // Reset blocks
+                    blocks.forEach(b => b.classList.remove('active'));
+                    let step = 0;
+                    blocks[step].classList.add('active');
+
+                    const interval = setInterval(() => {
+                        blocks[step].classList.remove('active');
+                        step++;
+                        
+                        if (step < blocks.length) {
+                            blocks[step].classList.add('active');
+                        } else {
+                            // Sequence Complete
+                            clearInterval(interval);
+                            
+                            // Reset to default safe state (last block for backwash, first for press)
+                            if (containerId === 'filter-seq-container') {
+                                blocks[4].classList.add('active'); // Return to SERVICE
+                            } else {
+                                blocks[0].classList.add('active'); // Return to PRESS OPEN
+                            }
+                            
+                            btn.disabled = false;
+                            btn.innerText = originalText;
+                            btn.style.opacity = '1';
+                        }
+                    }, 1500); // Step advances every 1.5 seconds for visualization
+                });
+            }
+
+            // Bind triggers
+            triggerSequence('btn-trigger-backwash', 'filter-seq-container', 'BACKWASH ACTIVE...', 'TRIGGER MANUAL BACKWASH');
+            triggerSequence('btn-trigger-press', 'press-seq-container', 'PRESS CYCLE ACTIVE...', 'INITIATE PRESS CYCLE');
+
+
+            // ==========================================
+            // 4. CHART.JS INTEGRATION & MOCK DATA
+            // ==========================================
+            
+            // Helper: Generate absolute time labels (HH:MM)
+            function generateTimeLabels(minutes) {
+                const labels = [];
+                const now = new Date();
+                for (let i = minutes; i >= 0; i--) {
+                    const past = new Date(now.getTime() - i * 60000);
+                    labels.push(`${String(past.getHours()).padStart(2, '0')}:${String(past.getMinutes()).padStart(2, '0')}`);
                 }
-            }, 1500); // 1.5 seconds per visual step for demo
-        }
+                return labels;
+            }
 
-        // --- 4. Chart.js & Reporting (Retained from Task 16) ---
-        const historyData = {
-            ph: { label: 'pH Level', data: [7.10, 7.15, 7.20, 7.18, 7.22, 7.20, 7.25], unit: 'pH', color: '#888888' },
-            temp: { label: 'Temperature', data: [24.0, 24.2, 24.5, 24.4, 24.6, 24.5, 24.8], unit: '°C', color: '#888888' },
-            tds: { label: 'TDS', data: [1800, 1820, 1850, 1845, 1860, 1850, 1870], unit: 'mg/L', color: '#888888' },
-            turb: { label: 'Turbidity', data: [11.0, 11.5, 12.4, 12.2, 12.8, 12.4, 13.0], unit: 'NTU', color: '#888888' },
-            do: { label: 'Dissolved O2', data: [1.8, 1.9, 2.1, 2.0, 2.2, 2.1, 2.3], unit: 'mg/L', color: '#4caf50' }
-        };
+            // Helper: Generate realistic randomized data
+            function generateTrendData(base, variance, count) {
+                return Array.from({length: count}, () => parseFloat((base + (Math.random() * variance * 2 - variance)).toFixed(2)));
+            }
 
-        const ctx = document.getElementById('trendChart').getContext('2d');
-        const trendChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: ['-30m','-25m','-20m','-15m','-10m','-5m','Now'],
-                datasets: [{
-                    label: historyData.ph.label,
-                    data: [...historyData.ph.data],
-                    borderColor: historyData.ph.color,
-                    backgroundColor: 'transparent',
-                    tension: 0.1
-                }]
-            },
-            options: {
-                responsive: true, maintainAspectRatio: false, color: '#e0e0e0',
-                scales: {
-                    y: { type: 'linear', display: true, grid: {color: '#444'}, title: { display: true, text: historyData.ph.unit, color: '#888' } },
-                    x: { grid: {color: '#444'} }
+            const dataPoints = 30; // 30 minutes of rolling history
+            
+            const chartConfig = {
+                ph: { label: 'pH Level (pH)', data: generateTrendData(7.2, 0.15, dataPoints + 1), color: '#98c379' },
+                do: { label: 'Dissolved Oxygen (mg/L)', data: generateTrendData(2.1, 0.3, dataPoints + 1), color: '#61afef' },
+                turb: { label: 'Turbidity (NTU)', data: generateTrendData(12.4, 1.2, dataPoints + 1), color: '#e5c07b' }
+            };
+
+            const ctx = document.getElementById('trendChart').getContext('2d');
+            
+            // Initialize Chart
+            let scadaChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: generateTimeLabels(dataPoints),
+                    datasets: [{
+                        label: chartConfig.ph.label,
+                        data: chartConfig.ph.data,
+                        borderColor: chartConfig.ph.color,
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        pointHitRadius: 10
+                    }]
                 },
-                plugins: { legend: { labels: { color: '#e0e0e0' } } },
-                animation: { duration: 400 }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    color: '#abb2bf',
+                    scales: {
+                        y: {
+                            display: true,
+                            grid: { color: '#282c34', borderColor: '#5c6370' },
+                            ticks: { color: '#abb2bf', font: { family: 'Consolas' } }
+                        },
+                        x: {
+                            display: true,
+                            grid: { color: '#282c34', borderColor: '#5c6370' },
+                            ticks: { color: '#abb2bf', font: { family: 'Consolas' }, maxTicksLimit: 6 }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: true, labels: { color: '#ffffff', font: { weight: 'bold' } } },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    animation: { duration: 300 }
+                }
+            });
+
+            // Handle Parameter Dropdown Change
+            document.getElementById('trend-select').addEventListener('change', (e) => {
+                const targetConfig = chartConfig[e.target.value];
+                scadaChart.data.datasets[0].label = targetConfig.label;
+                scadaChart.data.datasets[0].data = targetConfig.data;
+                scadaChart.data.datasets[0].borderColor = targetConfig.color;
+                scadaChart.update();
+            });
+
+
+            // ==========================================
+            // 5. CSV REPORT GENERATOR (BLOB)
+            // ==========================================
+            const csvBtn = document.getElementById('btn-download-csv');
+            
+            if (csvBtn) {
+                csvBtn.addEventListener('click', () => {
+                    let csvContent = "";
+                    
+                    // Header Metadata
+                    csvContent += "SBR MAIN CONTROL - SHIFT COMPLIANCE REPORT\n";
+                    csvContent += `Generated On:,${new Date().toLocaleString('en-IN')}\n`;
+                    csvContent += "Facility ID:,SBR-BLR-001\n";
+                    csvContent += "Operator ID:,O-2465554\n";
+                    csvContent += "Batch ID:,#SBR-8492\n\n";
+                    
+                    // Column Headers
+                    csvContent += "Timestamp,Phase,pH,Temp(C),DO(mg/L),Turbidity(NTU),MLSS(mg/L)\n";
+                    
+                    // Simulated Batch Cycle Data
+                    const mockRows = [
+                        "14:00:00,FILL,7.10,24.2,0.4,42.5,2500",
+                        "14:15:00,FILL,7.12,24.3,0.5,44.0,2600",
+                        "14:20:00,REACT,7.15,24.4,1.5,30.0,2700",
+                        "15:00:00,REACT,7.20,24.6,2.2,28.0,2750",
+                        "16:45:00,REACT,7.25,25.0,2.5,20.0,2800",
+                        "16:50:00,SETTLE,7.26,24.9,1.8,15.0,2850",
+                        "17:30:00,SETTLE,7.23,24.5,0.4,3.5,3000",
+                        "17:35:00,DECANT,7.22,24.4,0.3,2.1,3000",
+                        "18:00:00,DECANT,7.20,24.3,0.2,1.5,3000"
+                    ];
+                    
+                    csvContent += mockRows.join("\n") + "\n";
+                    
+                    // Generate Blob & trigger silent client-side download
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const link = document.createElement("a");
+                    link.setAttribute("href", url);
+                    link.setAttribute("download", `SBR_Shift_Report_${new Date().getTime()}.csv`);
+                    link.style.display = 'none';
+                    
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                });
             }
-        });
+            
+            // ==========================================
+            // 6. DYNAMIC UI SIMULATIONS
+            // ==========================================
+            // Live EQ Tank Level Fluctuation
+            setInterval(() => {
+                const fillBar = document.getElementById('eq-fill-bar');
+                const readout = document.getElementById('eq-pv');
+                
+                if (fillBar && readout) {
+                    let current = parseFloat(readout.innerText);
+                    let variance = (Math.random() * 0.4) - 0.2;
+                    let next = Math.max(5, Math.min(95, current + variance));
+                    
+                    readout.innerText = next.toFixed(1) + '%';
+                    fillBar.style.height = next + '%';
+                }
+            }, 3000);
 
-        function updateChartParameter() {
-            const key = document.getElementById('trend-selector').value;
-            trendChart.data.datasets[0].label = historyData[key].label;
-            trendChart.data.datasets[0].data = [...historyData[key].data];
-            trendChart.data.datasets[0].borderColor = historyData[key].color;
-            trendChart.options.scales.y.title.text = historyData[key].unit;
-            trendChart.update();
-        }
-
-        function downloadCSV() {
-            let csv = "Plant Name:,SBR Pilot Plant - Bengaluru\nDate:,2026-08-27\nOperator ID:,O-2465554\nBatch ID:,#SBR-8492\n\nTimestamp,Phase,pH,Temp(C),DO(mg/L),TDS(mg/L),Turbidity(NTU)\n14:00:00,FILL,7.0,24.2,0.4,1900,42.5\n14:20:00,REACT,7.1,24.4,1.5,1840,30.0\n";
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            link.setAttribute("href", URL.createObjectURL(blob));
-            link.setAttribute("download", "SBR_Detailed_Batch_Report.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function ackAlarm(rowId) {
-            const row = document.getElementById(rowId);
-            row.classList.remove('row-critical');
-            row.style.color = '#888';
-            row.querySelector('.btn-ack').disabled = true;
-            row.querySelector('.btn-ack').innerText = "ACK'D";
-        }
-
-        // --- 5. Firebase RTDB Connection ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyA_cflBLHqk7L46KZ8mAy7RKYm995DU3vc",
-            authDomain: "sbr-scada-platform.firebaseapp.com",
-            databaseURL: "https://sbr-scada-platform-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "sbr-scada-platform"
-        };
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        
-        firebase.database().ref('SBR_BLR_001/telemetry').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                if (data.pH) document.getElementById('val-ph').innerText = data.pH.toFixed(2);
-                if (data.temp) document.getElementById('val-temp').innerText = data.temp.toFixed(1);
-                if (data.tds) document.getElementById('val-tds').innerText = data.tds;
-                if (data.turbidity) document.getElementById('val-turb').innerText = data.turbidity.toFixed(1);
-            }
         });
     </script>
-</body>
-</html>
+    </main>
